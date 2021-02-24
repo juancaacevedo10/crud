@@ -1,6 +1,7 @@
-import React, {useState} from 'react'
+import React, {useState, useEffect} from 'react'
 import {isEmpty, size} from 'lodash'
-import shortid from 'shortid'
+import {getCollection, addDocument, updateDocument, deleteDocument} from './actions'
+
 
 function App() {
 
@@ -9,6 +10,15 @@ function App() {
   const [editMode, setEditMode] = useState(false)
   const [id, setId] = useState('')
   const [error, setError] = useState(null)
+
+  useEffect(() => {
+    (async () => {
+      const result = await getCollection('tasks')
+      if(result.statusResponse){
+        setTasks(result.data)
+      }
+    })()
+  }, [])
 
   const validForm = () => {
     let isValid = true
@@ -22,39 +32,51 @@ function App() {
     return isValid
   }
 
-  const addTask =(e)=> {
+  const addTask =async(e)=> {
     e.preventDefault()
     
     if(!validForm()){
       return
     }
 
-    const newTask = {
-      id: shortid.generate(),
-      name: task 
+    const result = await addDocument('tasks', {name: task})
+    if(!result.statusResponse){
+      setError(result.error)
+      return
     }
 
-    setTasks([...tasks, newTask])
+    setTasks([...tasks, {id:result.data.id, name:task}])
     setTask('')
   }
 
-  const saveTask =(e)=> {
+  const saveTask = async(e)=> {
     e.preventDefault()
 
     if(!validForm()){
       return
     }
 
+    const result = await updateDocument('tasks', id, {name:task})
+    if(!result.statusResponse){
+    setError(result.error)
+    return
+    }
+
     const editedTasks = tasks.map(item => item.id===id ?{ id, name:task}:item)
     setTasks(editedTasks)
     setEditMode(false)
-    setId('')
     setTask('')
+    setId('')
   }
 
-  const deleteTask = (id) =>{
-    const filteredTask = tasks.filter(task => task.id!==id)
-    setTasks(filteredTask)
+  const deleteTask = async(id) =>{
+    const result = await deleteDocument('tasks', id)
+  if(!result.statusResponse){
+    setError(result.error)
+    return
+  }
+    const filteredTasks = tasks.filter(task => task.id !== id)
+    setTasks(filteredTasks)
   }
 
   const editTask = (theTask) =>{
@@ -63,7 +85,6 @@ function App() {
     setId(theTask.id)
   }
 
-  console.log(tasks)
 
   return (
     <div className='container mt-5'>
